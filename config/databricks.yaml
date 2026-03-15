@@ -33,4 +33,4 @@ databricks:
     stop_on_error: false        # false = continue on individual object failure
     create_catalog_if_missing: true
     create_schema_if_missing: true
-    use_explain_validation: true  # validate SQL with EXPLAIN before deploying
+    use_explain_validation: false  # disabled — EXPLAIN unreliable for DDL statements
