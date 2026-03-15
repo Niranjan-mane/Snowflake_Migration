@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "snowflake-to-databricks"
+version = "0.1.0"
+description = "Agent to convert Snowflake SQL (views, stored procedures, DML) to Databricks-compatible SQL"
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+    "snowflake-connector-python>=3.5.0",
+    "databricks-sql-connector>=3.0.0",
+    "sqlglot>=23.0.0",
+    "anthropic>=0.40.0",
+    "click>=8.1.0",
+    "rich>=13.0.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.0.0",
+    "PyYAML>=6.0",
+    "tenacity>=8.0.0",
+]
+
+[project.scripts]
+snowflake-to-databricks = "snowflake_to_databricks.cli.main:cli"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.12.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
