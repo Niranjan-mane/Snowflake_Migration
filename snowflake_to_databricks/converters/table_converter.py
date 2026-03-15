@@ -31,6 +31,18 @@ _IDENTITY_TYPE_FIX_RE = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+# Fix: Snowflake virtual/computed column syntax:  col_name TYPE AS (expr)
+# Databricks equivalent:                          col_name TYPE GENERATED ALWAYS AS (expr)
+# Matches TYPE) AS ( but NOT CAST(x AS TYPE) or CREATE VIEW v AS (SELECT ...)
+_SF_COMPUTED_COL_RE = re.compile(
+    r'(\b(?:DECIMAL|NUMERIC|NUMBER|INT|INTEGER|BIGINT|SMALLINT|TINYINT|BYTEINT'
+    r'|FLOAT4?|FLOAT8|DOUBLE(?:\s+PRECISION)?|REAL|BOOLEAN|DATE|DATETIME'
+    r'|TIMESTAMP(?:_NTZ|_LTZ|_TZ)?|VARCHAR|CHAR|CHARACTER|STRING|TEXT|BINARY)'
+    r'(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)'
+    r'\s+AS\s*\((?!\s*(?:SELECT|WITH)\b)',
+    re.IGNORECASE | re.DOTALL,
+)
+
 # Detect DEFAULT values in column definitions (requires allowColumnDefaults feature)
 _HAS_DEFAULT_RE = re.compile(r'\bDEFAULT\b', re.IGNORECASE)
 
@@ -53,6 +65,17 @@ class TableConverter(BaseConverter):
         self, sql: str, source_object: SnowflakeObject
     ) -> tuple[str, list[Change]]:
         changes: list[Change] = []
+
+        # Fix Snowflake computed/virtual columns: TYPE AS (expr) → TYPE GENERATED ALWAYS AS (expr)
+        if _SF_COMPUTED_COL_RE.search(sql):
+            sql = _SF_COMPUTED_COL_RE.sub(r'\1 GENERATED ALWAYS AS (', sql)
+            changes.append(Change(
+                rule_name="COMPUTED_COLUMN",
+                original="col TYPE AS (expr)  [Snowflake virtual column]",
+                replacement="col TYPE GENERATED ALWAYS AS (expr)",
+                confidence="high",
+                note="Snowflake virtual column syntax converted to Databricks GENERATED ALWAYS AS",
+            ))
 
         # Fix IDENTITY column data types: Databricks requires BIGINT, not DECIMAL/NUMERIC
         if _IDENTITY_TYPE_FIX_RE.search(sql):

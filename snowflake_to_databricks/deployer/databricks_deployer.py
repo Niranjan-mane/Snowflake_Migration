@@ -3,6 +3,8 @@ Deploy converted SQL objects to Databricks in dependency order.
 """
 from __future__ import annotations
 
+import os
+import re
 import time
 from typing import Optional
 
@@ -85,6 +87,13 @@ class DatabricksDeployer:
 
         sql = conv.converted_sql.strip()
 
+        # Remap source database.schema references to target catalog.schema
+        # so views/tables referencing FRAUD_DETECTION.FRAUD.* resolve correctly
+        src_db = conv.source_object.database
+        src_schema = conv.source_object.schema
+        if src_db and src_schema:
+            sql = self._remap_source_schema(sql, src_db, src_schema)
+
         if self._dry_run:
             return DeployResult(
                 name=name,
@@ -127,6 +136,30 @@ class DatabricksDeployer:
                 ddl_executed=sql,
                 error_message=str(exc),
             )
+
+    def _resolve_cfg(self, value: str) -> str:
+        """Resolve ${ENV_VAR} placeholders in config string values."""
+        if not isinstance(value, str):
+            return str(value)
+        return re.sub(r'\$\{(\w+)\}', lambda m: os.getenv(m.group(1), m.group(0)), value)
+
+    def _remap_source_schema(self, sql: str, source_db: str, source_schema: str) -> str:
+        """
+        Replace <source_db>.<source_schema>. prefixes with the target catalog.schema.
+        Ensures that fully-qualified Snowflake references (e.g. FRAUD_DETECTION.FRAUD.TABLE)
+        are rewritten to the Databricks deployment target (e.g. risk_analytics.fraud_detection.TABLE).
+        """
+        target_catalog = self._resolve_cfg(self._cfg.get("catalog", ""))
+        target_schema = self._resolve_cfg(self._cfg.get("schema", ""))
+        if not (target_catalog and target_schema
+                and not target_catalog.startswith("${")
+                and not target_schema.startswith("${")):
+            return sql
+        pattern = re.compile(
+            r'\b' + re.escape(source_db) + r'\.' + re.escape(source_schema) + r'\.',
+            re.IGNORECASE,
+        )
+        return pattern.sub(f'{target_catalog}.{target_schema}.', sql)
 
     def _ensure_catalog_schema(self):
         deploy_cfg = self._cfg.get("deploy", {})
