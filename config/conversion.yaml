@@ -38,5 +38,5 @@ conversion:
 
   # Directories
   input_dir: "./extracted"
-  output_dir: "./converted"
+  output_dir: "./converted_sql"
   report_path: "./migration_report.json"

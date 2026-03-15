@@ -188,27 +188,55 @@ class MigrationAgent:
         return deploy_results
 
     def migrate(self, dry_run: bool = False):
-        """Full pipeline: extract → convert → deploy → report."""
+        """Full pipeline: extract → convert → save files → deploy → report."""
         # Extract
         extract_dir = _resolve_env(self._sf_config.get("extract", {}).get("output_dir", "./extracted"))
-        print(f"[1/4] Extracting from Snowflake → {extract_dir}")
+        print(f"[1/5] Extracting from Snowflake → {extract_dir}")
         extraction = self.extract(extract_dir)
         print(f"      Extracted {extraction.total_count} objects")
 
         # Convert
-        print(f"[2/4] Converting {extraction.total_count} objects...")
+        print(f"[2/5] Converting {extraction.total_count} objects...")
         conv_results = self.convert_objects(extraction.objects)
 
+        # Save converted SQL to output_dir before deploying
+        output_dir = _resolve_env(self._conv_config.get("output_dir", "./converted_sql"))
+        print(f"[3/5] Saving converted SQL → {output_dir}")
+        self._save_converted(conv_results, output_dir)
+        print(f"      Saved {len(conv_results)} files to {output_dir}/")
+
         # Deploy
-        print(f"[3/4] Deploying to Databricks (dry_run={dry_run})...")
+        print(f"[4/5] Deploying to Databricks (dry_run={dry_run})...")
         deploy_results = self.deploy(conv_results, dry_run=dry_run)
 
         # Report
-        print(f"[4/4] Generating report...")
+        print(f"[5/5] Generating report...")
         report = self._reporter.build(conv_results, deploy_results, extraction.errors)
         self._reporter.save_json(report)
         self._reporter.print_summary(report)
         return report
+
+    def _save_converted(self, results: list[ConversionResult], output_dir: str) -> None:
+        """Write each converted SQL object to its own file in output_dir."""
+        out = Path(output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+
+        # Also build a consolidated file for easy review
+        consolidated_parts: list[str] = []
+
+        for res in results:
+            obj_type = res.object_type.value
+            name = res.source_object.name
+            fname = f"{obj_type}_{name}.sql"
+            sql = res.converted_sql.strip()
+            (out / fname).write_text(sql + "\n", encoding="utf-8")
+            consolidated_parts.append(
+                f"-- {'='*60}\n-- {obj_type.upper()}: {name}\n-- {'='*60}\n{sql}\n"
+            )
+
+        # Write consolidated file
+        consolidated_path = out / "_all_objects.sql"
+        consolidated_path.write_text("\n\n".join(consolidated_parts), encoding="utf-8")
 
     # ------------------------------------------------------------------
     # Internal
