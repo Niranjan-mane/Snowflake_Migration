@@ -46,6 +46,50 @@ _SF_COMPUTED_COL_RE = re.compile(
 # Detect DEFAULT values in column definitions (requires allowColumnDefaults feature)
 _HAS_DEFAULT_RE = re.compile(r'\bDEFAULT\b', re.IGNORECASE)
 
+# Pattern to find DECIMAL/NUMERIC GENERATED ALWAYS AS (expr) columns
+_GENERATED_DECIMAL_COL_RE = re.compile(
+    r'((?:DECIMAL|NUMERIC)\s*\(\s*\d+\s*,\s*\d+\s*\))\s+GENERATED\s+ALWAYS\s+AS\s+\(',
+    re.IGNORECASE,
+)
+
+
+def _wrap_generated_decimal_cast(sql: str) -> str:
+    """
+    Wrap DECIMAL/NUMERIC generated column expressions in CAST to ensure type
+    compatibility with Databricks (SQLSTATE 42621).
+
+    Databricks requires the generated expression result type to exactly match
+    the declared column type. Arithmetic on DECIMAL columns expands precision
+    (e.g. DECIMAL(18,2) * DECIMAL(18,6) → DECIMAL(37,8)), which is incompatible
+    with a DECIMAL(18,2) column. Wrapping in CAST enforces the declared type.
+    Already-wrapped expressions are left unchanged to avoid double-wrapping.
+    """
+    parts: list[str] = []
+    last = 0
+    for m in _GENERATED_DECIMAL_COL_RE.finditer(sql):
+        col_type = m.group(1)
+        # Walk forward to find the matching closing paren
+        depth = 1
+        j = m.end()
+        while j < len(sql) and depth > 0:
+            if sql[j] == '(':
+                depth += 1
+            elif sql[j] == ')':
+                depth -= 1
+            j += 1
+        expr = sql[m.end():j - 1]  # Expression body (without outer parens)
+        if re.match(r'\s*CAST\s*\(', expr, re.IGNORECASE):
+            # Already wrapped — keep as-is
+            parts.append(sql[last:j])
+        else:
+            parts.append(sql[last:m.start()])
+            parts.append(
+                f'{col_type} GENERATED ALWAYS AS (CAST({expr.strip()} AS {col_type}))'
+            )
+        last = j
+    parts.append(sql[last:])
+    return ''.join(parts)
+
 
 class TableConverter(BaseConverter):
 
@@ -76,6 +120,9 @@ class TableConverter(BaseConverter):
                 confidence="high",
                 note="Snowflake virtual column syntax converted to Databricks GENERATED ALWAYS AS",
             ))
+            # Wrap expressions in CAST to ensure the expression result type matches
+            # the declared column type (Databricks SQLSTATE 42621)
+            sql = _wrap_generated_decimal_cast(sql)
 
         # Fix IDENTITY column data types: Databricks requires BIGINT, not DECIMAL/NUMERIC
         if _IDENTITY_TYPE_FIX_RE.search(sql):
