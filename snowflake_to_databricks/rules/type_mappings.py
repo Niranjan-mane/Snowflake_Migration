@@ -24,9 +24,13 @@ TYPE_RULES: list[Rule] = [
     ),
     Rule(
         name="NUMBER_bare",
+        # NUMBER without precision in Snowflake = integer column (ID, count, FK).
+        # Databricks BIGINT is the correct idiomatic mapping.
+        # If 38-digit precision is truly required, user should have specified NUMBER(38,0) explicitly.
         pattern=re.compile(r'\bNUMBER\b(?!\s*\()', FLAGS),
-        replacement='DECIMAL(38, 0)',
+        replacement='BIGINT',
         confidence="high",
+        note="Bare NUMBER (no precision) → BIGINT; use NUMBER(38,0) explicitly if 38-digit decimal precision is needed",
     ),
     Rule(
         name="BYTEINT",

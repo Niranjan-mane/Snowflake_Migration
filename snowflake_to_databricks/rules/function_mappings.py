@@ -409,9 +409,9 @@ FUNCTION_RULES: list[Rule] = [
     Rule(
         name="SEQ_functions",
         pattern=re.compile(r'\bSEQ\d+\s*\(\s*\)', FLAGS),
-        replacement='ROW_NUMBER() OVER (ORDER BY 1)',
-        confidence="low",
-        note="SEQ functions have no exact equivalent; ROW_NUMBER used as approximation",
+        replacement='MONOTONICALLY_INCREASING_ID()',
+        confidence="medium",
+        note="SEQ functions → MONOTONICALLY_INCREASING_ID() generates unique 64-bit IDs per row; values are not sequential but unique across partitions",
     ),
     Rule(
         name="UNIFORM_fn",
