@@ -43,13 +43,13 @@ DDL_RULES: list[Rule] = [
         note="Bare schema name converted; update to fully-qualified USE SCHEMA <catalog>.<schema>",
     ),
 
-    # CREATE OR REPLACE DATABASE → CREATE DATABASE IF NOT EXISTS (Unity Catalog: CREATE CATALOG)
+    # CREATE OR REPLACE DATABASE → CREATE CATALOG IF NOT EXISTS (Unity Catalog)
     Rule(
         name="CREATE_OR_REPLACE_DATABASE",
         pattern=re.compile(r'\bCREATE\s+OR\s+REPLACE\s+DATABASE\s+(\S+)', FLAGS),
-        replacement=r'CREATE DATABASE IF NOT EXISTS \1  -- Unity Catalog: use CREATE CATALOG IF NOT EXISTS \1',
+        replacement=r'CREATE CATALOG IF NOT EXISTS \1',
         confidence="high",
-        note="Snowflake DATABASE → Databricks DATABASE (Hive) or CATALOG (Unity Catalog)",
+        note="Snowflake DATABASE → Databricks CATALOG (Unity Catalog)",
     ),
 
     # CREATE OR REPLACE SCHEMA → CREATE SCHEMA IF NOT EXISTS

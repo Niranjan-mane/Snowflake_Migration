@@ -3,7 +3,7 @@
 -- =====================================================
 -- USE WAREHOUSE COMPUTE_WH;  -- (Databricks: select compute via cluster/SQL warehouse at connection level)
 
-CREATE DATABASE IF NOT EXISTS FRAUD_DETECTION;  -- Unity Catalog: use CREATE CATALOG IF NOT EXISTS FRAUD_DETECTION;
+CREATE CATALOG IF NOT EXISTS FRAUD_DETECTION;
 
 CREATE SCHEMA IF NOT EXISTS FRAUD_DETECTION.FRAUD;
 

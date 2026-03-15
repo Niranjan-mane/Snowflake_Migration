@@ -192,7 +192,8 @@ class SnowflakeExtractor:
 
     def _extract_sequences(self, db: str, schema: str) -> list[SnowflakeObject]:
         rows = self._conn.execute(f"""
-            SELECT SEQUENCE_NAME, START_VALUE, INCREMENT, MINIMUM_VALUE, MAXIMUM_VALUE
+            SELECT SEQUENCE_NAME, START_VALUE, "INCREMENT" AS INCREMENT_BY,
+                   MINIMUM_VALUE, MAXIMUM_VALUE
             FROM {db}.INFORMATION_SCHEMA.SEQUENCES
             WHERE SEQUENCE_SCHEMA = '{schema}'
             ORDER BY SEQUENCE_NAME
@@ -201,7 +202,7 @@ class SnowflakeExtractor:
         for row in rows:
             name = row.get("SEQUENCE_NAME", "")
             start = row.get("START_VALUE", 1)
-            inc = row.get("INCREMENT", 1)
+            inc = row.get("INCREMENT_BY", 1)
             ddl = f"CREATE SEQUENCE IF NOT EXISTS {name} START WITH {start} INCREMENT BY {inc};"
             objects.append(SnowflakeObject(
                 name=name,
