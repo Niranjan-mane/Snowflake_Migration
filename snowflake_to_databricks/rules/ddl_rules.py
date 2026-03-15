@@ -13,6 +13,55 @@ FLAGS = re.IGNORECASE | re.MULTILINE | re.DOTALL
 DDL_RULES: list[Rule] = [
 
     # =========================================================
+    # SNOWFLAKE SESSION / WAREHOUSE COMMANDS (remove or convert)
+    # =========================================================
+
+    # USE WAREHOUSE → no equivalent; handled at connection level in Databricks
+    Rule(
+        name="USE_WAREHOUSE",
+        pattern=re.compile(r'\bUSE\s+WAREHOUSE\s+\S+', FLAGS),
+        replacement=lambda m: f"-- {m.group(0).strip()}  -- (Databricks: select compute via cluster/SQL warehouse at connection level)",
+        confidence="high",
+        note="USE WAREHOUSE has no SQL equivalent in Databricks; select compute at connection level",
+    ),
+
+    # USE DATABASE → USE CATALOG (Unity Catalog)
+    Rule(
+        name="USE_DATABASE",
+        pattern=re.compile(r'\bUSE\s+DATABASE\s+(\S+)', FLAGS),
+        replacement=r'USE CATALOG \1',
+        confidence="high",
+        note="Snowflake DATABASE maps to Databricks Unity Catalog CATALOG",
+    ),
+
+    # USE SCHEMA (bare, unqualified) → comment with guidance
+    Rule(
+        name="USE_SCHEMA_bare",
+        pattern=re.compile(r'\bUSE\s+SCHEMA\s+(\w+)\s*;?\s*$', FLAGS),
+        replacement=lambda m: f"-- USE SCHEMA {m.group(1)};  -- (Databricks: qualify as USE SCHEMA <catalog>.{m.group(1)})",
+        confidence="medium",
+        note="Bare schema name converted; update to fully-qualified USE SCHEMA <catalog>.<schema>",
+    ),
+
+    # CREATE OR REPLACE DATABASE → CREATE DATABASE IF NOT EXISTS (Unity Catalog: CREATE CATALOG)
+    Rule(
+        name="CREATE_OR_REPLACE_DATABASE",
+        pattern=re.compile(r'\bCREATE\s+OR\s+REPLACE\s+DATABASE\s+(\S+)', FLAGS),
+        replacement=r'CREATE DATABASE IF NOT EXISTS \1  -- Unity Catalog: use CREATE CATALOG IF NOT EXISTS \1',
+        confidence="high",
+        note="Snowflake DATABASE → Databricks DATABASE (Hive) or CATALOG (Unity Catalog)",
+    ),
+
+    # CREATE OR REPLACE SCHEMA → CREATE SCHEMA IF NOT EXISTS
+    Rule(
+        name="CREATE_OR_REPLACE_SCHEMA",
+        pattern=re.compile(r'\bCREATE\s+OR\s+REPLACE\s+SCHEMA\s+(\S+)', FLAGS),
+        replacement=r'CREATE SCHEMA IF NOT EXISTS \1',
+        confidence="high",
+        note="CREATE OR REPLACE SCHEMA → CREATE SCHEMA IF NOT EXISTS",
+    ),
+
+    # =========================================================
     # TABLE DDL
     # =========================================================
 

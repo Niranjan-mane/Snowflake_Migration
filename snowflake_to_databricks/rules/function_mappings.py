@@ -415,9 +415,15 @@ FUNCTION_RULES: list[Rule] = [
     ),
     Rule(
         name="UNIFORM_fn",
-        pattern=re.compile(r'\bUNIFORM\s*\(([^,]+),\s*([^,]+),\s*([^)]+)\)', FLAGS),
-        replacement=r'FLOOR(\1 + RAND(\3) * (\2 - \1 + 1))',
+        # (?:[^()]|\([^)]*\))* handles one level of nesting (e.g. RAND() as the gen arg)
+        pattern=re.compile(
+            r'\bUNIFORM\s*\(([^,]+),\s*([^,]+),\s*(?:[^()]|\([^)]*\))*\)',
+            FLAGS,
+        ),
+        # Drop the Snowflake generator arg entirely; RAND() needs no seed expression
+        replacement=r'FLOOR(\1 + RAND() * (\2 - \1 + 1))',
         confidence="medium",
+        note="UNIFORM(min, max, gen) → FLOOR(min + RAND() * (max - min + 1)); generator arg dropped",
     ),
 
     # =========================================================

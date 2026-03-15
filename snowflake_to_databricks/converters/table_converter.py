@@ -24,6 +24,16 @@ _DATA_RETENTION_RE = re.compile(
 )
 _TRANSIENT_RE = re.compile(r'\bCREATE\s+(?:OR\s+REPLACE\s+)?TABLE\b', re.IGNORECASE)
 
+# Fix: Databricks IDENTITY columns require BIGINT, not DECIMAL/NUMERIC
+# Matches any DECIMAL/NUMERIC type immediately before GENERATED ALWAYS AS IDENTITY
+_IDENTITY_TYPE_FIX_RE = re.compile(
+    r'(?:DECIMAL|NUMERIC)\s*\(\d+,\s*\d+\)(\s+(?:NOT\s+NULL\s+)?GENERATED\s+ALWAYS\s+AS\s+IDENTITY)',
+    re.IGNORECASE | re.MULTILINE,
+)
+
+# Detect DEFAULT values in column definitions (requires allowColumnDefaults feature)
+_HAS_DEFAULT_RE = re.compile(r'\bDEFAULT\b', re.IGNORECASE)
+
 
 class TableConverter(BaseConverter):
 
@@ -44,6 +54,17 @@ class TableConverter(BaseConverter):
     ) -> tuple[str, list[Change]]:
         changes: list[Change] = []
 
+        # Fix IDENTITY column data types: Databricks requires BIGINT, not DECIMAL/NUMERIC
+        if _IDENTITY_TYPE_FIX_RE.search(sql):
+            sql = _IDENTITY_TYPE_FIX_RE.sub(r'BIGINT\1', sql)
+            changes.append(Change(
+                rule_name="IDENTITY_TYPE_BIGINT",
+                original="DECIMAL(N,0) GENERATED ALWAYS AS IDENTITY",
+                replacement="BIGINT GENERATED ALWAYS AS IDENTITY",
+                confidence="high",
+                note="Databricks IDENTITY columns require BIGINT data type (SQLSTATE: 428H2)",
+            ))
+
         # Detect if original was a TRANSIENT table
         original_lower = source_object.ddl.lower()
         is_transient = 'transient' in original_lower
@@ -59,8 +80,11 @@ class TableConverter(BaseConverter):
         if retention_match:
             retention_days = int(retention_match.group(1))
 
+        # Detect if the table has DEFAULT column values
+        has_defaults = bool(_HAS_DEFAULT_RE.search(sql))
+
         # Build TBLPROPERTIES block
-        tblprops = self._build_tblproperties(retention_days, is_transient)
+        tblprops = self._build_tblproperties(retention_days, is_transient, has_defaults)
 
         # Add USING DELTA if not already present
         if not _USING_DELTA_RE.search(sql):
@@ -84,10 +108,15 @@ class TableConverter(BaseConverter):
 
         return sql, changes
 
-    def _build_tblproperties(self, retention_days: int, is_transient: bool) -> str:
+    def _build_tblproperties(
+        self, retention_days: int, is_transient: bool, has_defaults: bool = False
+    ) -> str:
         props = [
             f"  'delta.deletedFileRetentionDuration' = 'interval {retention_days} days'",
         ]
+        if has_defaults:
+            # Required when any column has a DEFAULT value in Databricks Delta
+            props.append("  'delta.feature.allowColumnDefaults' = 'supported'")
         if self._add_auto_optimize:
             props += [
                 "  'delta.autoOptimize.optimizeWrite' = 'true'",
