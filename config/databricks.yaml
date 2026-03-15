@@ -1,0 +1,36 @@
+# Databricks Connection Configuration
+# Credentials are loaded from .env file (see .env.example)
+
+databricks:
+  # Workspace hostname (from your Databricks workspace URL)
+  # Example: adb-1234567890123456.12.azuredatabricks.net
+  host: "${DB_HOST}"
+
+  # SQL Warehouse HTTP path
+  # Found at: SQL Warehouses → your warehouse → Connection Details tab
+  # Format: /sql/1.0/warehouses/<warehouse_id>
+  http_path: "${DB_HTTP_PATH}"
+
+  # Authentication method: pat | oauth | azure_ad
+  auth_method: "pat"
+
+  # Personal Access Token (PAT)
+  # Created at: User Settings → Developer → Access Tokens
+  # Format: dapi... (40+ characters)
+  access_token: "${DB_ACCESS_TOKEN}"
+
+  # Unity Catalog target
+  # Three-level namespace: catalog.schema.table
+  catalog: "${DB_CATALOG}"
+  schema: "${DB_SCHEMA}"
+
+  # Connection tuning
+  http_timeout: 120
+
+  # Deployment settings
+  deploy:
+    dry_run: false              # true = preview only, no actual execution
+    stop_on_error: false        # false = continue on individual object failure
+    create_catalog_if_missing: true
+    create_schema_if_missing: true
+    use_explain_validation: true  # validate SQL with EXPLAIN before deploying

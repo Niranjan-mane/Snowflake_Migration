@@ -1,0 +1,44 @@
+-- Sample Snowflake table DDL demonstrating common patterns
+-- that require conversion to Databricks / Delta Lake
+
+CREATE OR REPLACE TRANSIENT TABLE MYDB.PUBLIC.CUSTOMER_ORDERS (
+    ORDER_ID        NUMBER(38,0)         NOT NULL AUTOINCREMENT,
+    CUSTOMER_ID     NUMBER(38,0)         NOT NULL,
+    ORDER_DATE      TIMESTAMP_NTZ(9)     DEFAULT CURRENT_TIMESTAMP(),
+    STATUS          VARCHAR(50)          DEFAULT 'PENDING',
+    AMOUNT          FLOAT8               NOT NULL,
+    DISCOUNT        NUMBER(10,2)         DEFAULT 0.00,
+    TAGS            VARIANT,
+    METADATA        OBJECT,
+    CREATED_AT      TIMESTAMP_LTZ(9),
+    UPDATED_AT      TIMESTAMP_TZ(9),
+    COMMENT_TEXT    TEXT,
+    REGION_CODE     CHAR(2),
+    IS_ACTIVE       BOOLEAN              DEFAULT TRUE,
+    CONSTRAINT PK_ORDERS PRIMARY KEY (ORDER_ID)
+)
+DATA_RETENTION_TIME_IN_DAYS = 7
+COPY GRANTS
+COMMENT = 'Customer orders with full order lifecycle'
+TAG (env = 'production', team = 'data-eng');
+
+-- Sequence for order IDs
+CREATE SEQUENCE IF NOT EXISTS MYDB.PUBLIC.ORDER_SEQ
+    START WITH 1000
+    INCREMENT BY 1;
+
+-- Clustered table with search optimization
+CREATE OR REPLACE TABLE MYDB.PUBLIC.PRODUCTS (
+    PRODUCT_ID      NUMBER(38,0)         NOT NULL IDENTITY(1, 1),
+    PRODUCT_NAME    VARCHAR(255)         NOT NULL,
+    CATEGORY        VARCHAR(100),
+    PRICE           DECIMAL(12,2),
+    STOCK_COUNT     INTEGER              DEFAULT 0,
+    ATTRIBUTES      VARIANT,
+    CREATED_DATE    DATE,
+    LAST_MODIFIED   DATETIME
+)
+CLUSTER BY (CATEGORY, CREATED_DATE)
+DATA_RETENTION_TIME_IN_DAYS = 14;
+
+ALTER TABLE MYDB.PUBLIC.PRODUCTS ADD SEARCH OPTIMIZATION;

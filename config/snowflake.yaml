@@ -1,0 +1,55 @@
+# Snowflake Connection Configuration
+# Credentials are loaded from .env file (see .env.example)
+
+snowflake:
+  # Account identifier formats:
+  #   New (recommended): myorg-myaccount
+  #   Legacy:            myaccount.us-east-1.aws
+  account: "${SF_ACCOUNT}"
+  user: "${SF_USER}"
+  warehouse: "${SF_WAREHOUSE}"
+  database: "${SF_DATABASE}"
+  schema: "${SF_SCHEMA}"
+  role: "${SF_ROLE}"
+
+  # Authentication method: password | keypair | sso | oauth
+  auth_method: "password"
+
+  # Password auth
+  password: "${SF_PASSWORD}"
+
+  # Key-pair auth
+  private_key_path: "${SF_PRIVATE_KEY_PATH}"
+  private_key_passphrase: "${SF_PRIVATE_KEY_PASSPHRASE}"
+
+  # SSO: set auth_method to 'sso' (opens browser window)
+  # OAuth: set auth_method to 'oauth' — provide SF_TOKEN in .env
+
+  # Connection tuning
+  login_timeout: 60
+  network_timeout: 120
+  client_session_keep_alive: true
+
+  # Extraction settings
+  extract:
+    # Object types to extract
+    object_types:
+      - tables
+      - views
+      - materialized_views
+      - procedures
+      - functions
+      - sequences
+      - stages
+      - streams
+      - tasks
+
+    # Leave empty to extract all schemas
+    include_schemas: []
+
+    # Schemas to skip
+    exclude_schemas:
+      - INFORMATION_SCHEMA
+
+    # Output directory for extracted DDL files
+    output_dir: "./extracted"

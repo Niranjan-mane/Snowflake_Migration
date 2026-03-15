@@ -1,0 +1,42 @@
+# Conversion Behavior Configuration
+
+conversion:
+  # Target SQL dialect
+  target_dialect: "databricks"
+
+  # Enable Claude AI for complex conversions
+  # (JavaScript stored procs, CONNECT BY, MATCH_RECOGNIZE, etc.)
+  use_ai: true
+  ai_model: "claude-sonnet-4-6"
+  ai_max_tokens: 8096
+  anthropic_api_key: "${ANTHROPIC_API_KEY}"
+
+  # QUALIFY clause handling
+  # native  = keep QUALIFY as-is (Databricks 12.2+)
+  # subquery = rewrite as subquery (safe for all versions)
+  qualify_mode: "native"
+
+  # Delta Lake settings
+  delta_lake:
+    # Add USING DELTA to every CREATE TABLE statement
+    always_use_delta: true
+
+    # Add autoOptimize table properties to every table
+    add_auto_optimize: true
+
+    # Default data retention (replaces DATA_RETENTION_TIME_IN_DAYS)
+    default_retention_days: 7
+
+    # Enable Change Data Feed when converting Snowflake Streams
+    enable_cdf_for_streams: true
+
+    # Use liquid CLUSTER BY instead of ZORDER for new tables (DBR 13.3+)
+    prefer_liquid_clustering: true
+
+  # When AI is unavailable or fails, mark as NEEDS_MANUAL_REVIEW
+  fallback_on_ai_failure: true
+
+  # Directories
+  input_dir: "./extracted"
+  output_dir: "./converted"
+  report_path: "./migration_report.json"
