@@ -31,6 +31,6 @@ databricks:
   deploy:
     dry_run: false              # true = preview only, no actual execution
     stop_on_error: false        # false = continue on individual object failure
-    create_catalog_if_missing: true
+    create_catalog_if_missing: false  # catalog 'fraud_detection' already exists
     create_schema_if_missing: true
     use_explain_validation: false  # disabled — EXPLAIN unreliable for DDL statements
