@@ -88,21 +88,21 @@ TYPE_RULES: list[Rule] = [
     # --- Timestamp / Date ---
     Rule(
         name="TIMESTAMP_NTZ",
-        pattern=re.compile(r'\bTIMESTAMP_NTZ(?:\s*\(\d+\))?\b', FLAGS),
+        pattern=re.compile(r'\bTIMESTAMP_NTZ(?:\s*\(\d+\))?', FLAGS),
         replacement='TIMESTAMP_NTZ',
         confidence="high",
         note="TIMESTAMP_NTZ is supported natively in Databricks DBR 10.4+",
     ),
     Rule(
         name="TIMESTAMP_LTZ",
-        pattern=re.compile(r'\bTIMESTAMP_LTZ(?:\s*\(\d+\))?\b', FLAGS),
+        pattern=re.compile(r'\bTIMESTAMP_LTZ(?:\s*\(\d+\))?', FLAGS),
         replacement='TIMESTAMP',
         confidence="high",
         note="TIMESTAMP_LTZ → TIMESTAMP; timezone info comes from session setting",
     ),
     Rule(
         name="TIMESTAMP_TZ",
-        pattern=re.compile(r'\bTIMESTAMP_TZ(?:\s*\(\d+\))?\b', FLAGS),
+        pattern=re.compile(r'\bTIMESTAMP_TZ(?:\s*\(\d+\))?', FLAGS),
         replacement='TIMESTAMP',
         confidence="medium",
         note="TIMESTAMP_TZ → TIMESTAMP; timezone offset is LOST — review if precision needed",

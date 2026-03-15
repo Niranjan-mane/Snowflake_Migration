@@ -696,14 +696,14 @@ FUNCTION_RULES: list[Rule] = [
     # =========================================================
     Rule(
         name="COLON_PATH_TYPED",
-        pattern=re.compile(r'\b(\w+)(?::\w+)+::\w+\b', FLAGS),
+        pattern=re.compile(r'\b([a-zA-Z_]\w*)(?::[a-zA-Z_]\w*)+::\w+\b', FLAGS),
         replacement=_colon_path_to_json,
         confidence="medium",
         note="Snowflake colon-path::TYPE notation → CAST(GET_JSON_OBJECT(...))",
     ),
     Rule(
         name="COLON_PATH_PLAIN",
-        pattern=re.compile(r'\b(\w+)(?::\w+)+\b', FLAGS),
+        pattern=re.compile(r'\b([a-zA-Z_]\w*)(?::[a-zA-Z_]\w*)+\b', FLAGS),
         replacement=_colon_path_to_json,
         confidence="medium",
         note="Snowflake colon-path notation → GET_JSON_OBJECT(...)",
